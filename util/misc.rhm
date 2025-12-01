@@ -1,0 +1,24 @@
+#lang rhombus/static/and_meta
+
+import:
+  lib("racket/base.rkt"):
+    rename:
+      #{in-lines} as in_lines
+      #{in-string} as in_string
+  lib("racket/sequence.rkt"):
+    rename:
+      #{sequence-map} as map
+
+export:
+  example_input
+  in_lines
+  in_string
+
+defn.macro 'example_input($(name :: Identifier), [$s, ...])':
+  'def $name: String.append($s, ...)'
+
+fun in_lines(inp :: Port.Input) :~ Sequence:
+  sequence.map(fun (s :~ ReadableString): s.to_string(), base.in_lines(inp))
+
+fun in_string(s :: String) :~ Sequence:
+  base.in_string(s)

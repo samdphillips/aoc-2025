@@ -1,0 +1,32 @@
+#lang rhombus/static
+
+import:
+  "util/advent_of_code.rhm" as aoc
+  "util/misc.rhm" open
+
+@example_input(test_input1){
+}
+
+fun get_puzzle_input():
+  aoc.fetch_input(aoc.find_session(), 2025, #false)
+
+fun run1(s): #void
+
+#//
+module test:
+  check run1(test_input1) ~is #false
+
+module part1:
+  def input = get_puzzle_input()
+  run1(input)
+
+fun run2(s): #void
+
+#//
+module test:
+  check run2(test_input1) ~is #false
+
+
+module part2:
+  def input = get_puzzle_input()
+  run2(input)
