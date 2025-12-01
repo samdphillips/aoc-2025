@@ -1,0 +1,89 @@
+#lang rhombus/static/and_meta
+
+import:
+  // XXX: math.sgn
+  lib("racket/math.rkt") as m:
+    only sgn
+  rhombus/rx open
+  "util/advent_of_code.rhm" as aoc
+  "util/misc.rhm" open
+
+@example_input(test_input1){
+L68
+L30
+R48
+L5
+R60
+L55
+L1
+L99
+R14
+L82
+}
+
+fun get_puzzle_input():
+  aoc.fetch_input(aoc.find_session(), 2025, 1)
+
+// XXX: maybe add Char"C" as a regexp form ?
+// XXX: add a binding macro for RXMatch ?
+// XXX: RXMatch.get (and []) should annotate result maybe(String)
+
+def rpat:
+  rx'($dir: ["RL"]) ($amt: digit+)'
+
+annot.macro 'Instr': 'Int'
+
+fun parse_input(s :~ String) :: List.of(Instr):
+  Closeable.let inp = Port.Input.open_string(s)
+  for List (line: in_lines(inp)):
+    let m :: RXMatch = rpat.match(line)
+    let n :~ Nat: String.to_int(m[#'amt])
+    match m[#'dir]
+    | "L": -n
+    | "R": n
+
+fun run1(s) :: Nat:
+  def input = parse_input(s)
+  def values(_, result):
+    for values(v = 50, zeroes = 0) (i: input):
+      match (v + i) mod 100
+      | 0: values(0, zeroes + 1)
+      | n: values(n, zeroes)
+  result
+
+module test:
+  check run1(test_input1) ~is 3
+
+module part1:
+  def input = get_puzzle_input()
+  run1(input)
+
+// may be a case of annotation abuse
+annot.macro '<= $(n :: Int)': 'Int && satisfying(fun(n): n .<= $n)'
+annot.macro '>= $(n :: Int)': 'Int && satisfying(fun(n): n .>= $n)'
+
+fun crossings(val :: Nat, xing :: Nat, amt :: Int):
+  def values(d_xing, new_val):
+    match values(m.sgn(amt), amt + val)
+    | values(-1, new_val :: <= 0):
+        let adj = if val == 0 | 0 | 1
+        values(math.abs(new_val) div 100 + adj, new_val)
+    | values(1, new_val :: >= 100):
+        values(new_val div 100, new_val)
+    | values(_, new_val):
+        values(0, new_val)
+  values(xing + d_xing, new_val mod 100)
+
+fun run2(s):
+  def input = parse_input(s)
+  def values(xing, _):
+    for values(xing = 0, val = 50) (i: input):
+      crossings(val, xing, i)
+  xing
+
+module test:
+  check run2(test_input1) ~is 6
+
+module part2:
+  def input = get_puzzle_input()
+  run2(input)
