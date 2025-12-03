@@ -1,0 +1,131 @@
+#lang rhombus/static/and_meta
+
+import:
+  rhombus/rx open
+  "util/advent_of_code.rhm" as aoc
+  "util/misc.rhm" open
+
+@example_input(test_input1){
+11-22,95-115,998-1012,1188511880-1188511890,222220-222224,
+1698522-1698528,446443-446449,38593856-38593862,565653-565659,
+824824821-824824827,2121212118-2121212124
+}
+
+fun get_puzzle_input():
+  aoc.fetch_input(aoc.find_session(), 2025, 2)
+
+annot.macro 'IdRange': 'Pair.of(Nat, Nat)'
+
+def range_pat:
+  rx'($start: digit+) "-" ($end: digit+) ["," space] ? '
+
+fun parse_input(input :: String) :: List.of(IdRange):
+  recur more(i = 0, ranges :~ List = []):
+    match range_pat.match_in(input, ~start: i)
+    | #false: ranges
+    | match :~ RXMatch:
+        let r = Pair((match[#'start] :~ String).to_int(),
+                     (match[#'end] :~ String).to_int())
+        more(i + (match.whole :~ String).length(), ranges.add(r))
+
+fun is_even(n :: Nat) :: Boolean:
+  !is_odd(n)
+
+fun is_odd(n :: Nat) :~ Boolean:
+  n bits.(?) 0
+
+annot.macro 'Even': 'Nat && satisfying(is_even)'
+annot.macro 'Odd': 'Nat && satisfying(is_odd)'
+
+fun decimal_width(n :: Nat) :: Nat:
+  recur loop(n = n, width = 0):
+    match n
+    | 0: width
+    | n: loop(n div 10, width + 1)
+
+// decimal shift operators
+operator (m >> n):
+  m div 10 ** n
+
+operator (m << n):
+  m * 10 ** n
+
+fun trim_int_suffix(n :: Nat, m :: Nat) :: Nat:
+  n >> m
+
+fun norm_dup_range(Pair(start, end) :: IdRange) :: maybe(IdRange):
+  def a_width = decimal_width(start)
+  def b_width = decimal_width(end)
+  match values(a_width, b_width)
+  | values(a_width :: Even, b_width :: Even):
+      Pair(start, end)
+  | values(a_width :: Odd, b_width :: Odd):
+      if a_width == b_width
+      | #false
+      | Pair(1 << a_width, (1 << (b_width - 1)) - 1)
+  | values(a_width :: Odd, b_width :: Even):
+      Pair(1 << a_width, end)
+  | values(a_width :: Even, b_width :: Odd):
+      Pair(start, (1 << (b_width - 1)) - 1)
+
+fun find_invalid_ids(Pair(start, end) :: IdRange) :: List.of(Nat):
+  def start0 = trim_int_suffix(start, decimal_width(start) div 2)
+  def end0 = trim_int_suffix(end, decimal_width(end) div 2)
+  for List (v: start0..=end0):
+    let w = decimal_width(v)
+    let n = (v << w) + v
+    skip_when: n < start
+    break_when: n > end
+    n
+
+fun run1(input):
+  for math.sum (idr: parse_input(input)):
+    match norm_dup_range(idr)
+    | #false: 0
+    | p: math.sum(&find_invalid_ids(p))
+
+module test:
+  check run1(test_input1) ~is 1227775554
+
+module part1:
+  def input = get_puzzle_input()
+  run1(input)
+
+fun num_sub_lengths(n :: Nat) :: List.of(Nat):
+  recur loop(m = n div 2, ms :~ List = []):
+    if m == 0
+    | ms
+    | if (n mod m) .= 0
+      | loop(m - 1, ms.add(m))
+      | loop(m - 1, ms)
+
+fun dup_number(n :: Nat, i :: Nat):
+  def width = decimal_width(n)
+  recur collect(i = i, result = 0):
+    if i == 0
+    | result
+    | collect(i - 1, (result << width) + n)
+
+fun find_invalid_ids2(Pair(start, end) :: IdRange,
+                      width :: Nat,
+                      slice :: Nat) :: List.of(Nat):
+  def start0 = trim_int_suffix(start, decimal_width(start) - slice)
+  def end0 = trim_int_suffix(end, decimal_width(end) - slice)
+  def repeat = width div slice
+  for List (n: start0..=end0):
+    def m = dup_number(n, repeat)
+    skip_when: m < start
+    break_when: m > end
+    m
+
+
+fun run2(s): #void
+
+#//
+module test:
+  check run2(test_input1) ~is #false
+
+
+module part2:
+  def input = get_puzzle_input()
+  run2(input)
