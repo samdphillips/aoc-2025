@@ -106,11 +106,17 @@ fun dup_number(n :: Nat, i :: Nat):
     | result
     | collect(i - 1, (result << width) + n)
 
+
+// if start and end are different lengths split into multiple ranges
+fun norm_range(Pair(start, end) :: IdRange) :: List.of(IdRange):
+ #void
+
 fun find_invalid_ids2(Pair(start, end) :: IdRange,
                       width :: Nat,
                       slice :: Nat) :: List.of(Nat):
-  def start0 = trim_int_suffix(start, decimal_width(start) - slice)
-  def end0 = trim_int_suffix(end, decimal_width(end) - slice)
+  def trim = decimal_width(start) - slice
+  def start0 = trim_int_suffix(start, trim)
+  def end0 = trim_int_suffix(end, trim)
   def repeat = width div slice
   for List (n: start0..=end0):
     def m = dup_number(n, repeat)
