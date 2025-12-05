@@ -1,0 +1,118 @@
+#lang rhombus/static/and_meta
+
+export:
+  Posn
+  Grid
+
+  $ $+ $- $*
+
+class Posn(x :: Int, y :: Int):
+  implements Printable
+  internal _Posn
+
+  method add(Posn(x2, y2)) :~ Posn:
+    Posn(x + x2, y + y2)
+
+  method sub(Posn(x2, y2)) :~ Posn:
+    Posn(x - x2, y - y2)
+
+  method mul(m :: Number) :~ Posn:
+    Posn(x * m, y * m)
+
+  method dist(posn :: Posn) :~ NonnegInt:
+    def dx $ dy = this $- posn
+    math.sqrt(dx ** 2 + dy ** 2)
+
+  method neighbors4() :~ List.of(Posn):
+    [this $+ Posn.N,
+     this $+ Posn.E,
+     this $+ Posn.S,
+     this $+ Posn.W]
+
+  method turn_left() :~ Posn:
+    match this
+    |  0 $ -1: Posn.W
+    |  1 $  0: Posn.N
+    |  0 $  1: Posn.E
+    | -1 $  0: Posn.S
+
+  method turn_right() :~ Posn:
+    match this
+    |  0 $ -1: Posn.E
+    |  1 $  0: Posn.S
+    |  0 $  1: Posn.W
+    | -1 $  0: Posn.N
+
+  override method describe(mode, recur):
+    @str{@x $ @y}
+
+operator (x $ y):
+  Posn(x, y)
+
+bind.macro '$x $('$') $y': 'Posn($x, $y)'
+
+def Posn.N :~ Posn =  0 $ -1
+def Posn.E :~ Posn =  1 $  0
+def Posn.S :~ Posn =  0 $  1
+def Posn.W :~ Posn = -1 $  0
+
+operator ((p1 :: Posn) $+ (p2 :: Posn)) :~ Posn:
+  p1.add(p2)
+
+operator ((p1 :: Posn) $- (p2 :: Posn)) :~ Posn:
+  p1.sub(p2)
+
+operator $* :~ Posn:
+  ~stronger_than $+ $-
+| ((m :: Number) $* (p :: Posn)):
+    p.mul(m)
+| ((p :: Posn) $* (m :: Number)):
+    p.mul(m)
+
+class Grid(lines :: List.of(String),
+           width :: NonnegInt,
+           height :: NonnegInt):
+  implements Indexable
+
+  property rows :~ SequenceRange: 0 .. height
+  property cols :~ SequenceRange: 0 .. width
+
+  constructor (s :: String):
+    let ls = s.split("\n")
+    super(ls, ls[0].length(), ls.length())
+
+  method find_char(ch :: Char) :: Posn:
+    recur find(y = rows.start()):
+      match lines[y].find(to_string(ch))
+      | x :: Int: x $ y
+      | ~else:
+          if in_grid(0, y + 1)
+          | find(y + 1)
+          | #false
+
+  method find_all(ch :: Char) :: List.of(Posn):
+    for List:
+      each y: 0 .. height
+      each x: 0 .. width
+      keep_when lines[y][x] == ch
+      x $ y
+
+  method positions() :: Map.of(Char, List.of(Posn)):
+    for values(m :~ Map = {}):
+      each: y: 0 .. height
+            line: lines
+      each: x: 0 .. width
+            ch: line
+      skip_when ch == Char"."
+      m ++ { ch: List.add(m.get(ch, []), x $ y) }
+
+  method
+  | in_grid(Posn(x, y)):
+      in_grid(x, y)
+  | in_grid(x :: Int, y :: Int):
+      cols.has_element(x) && rows.has_element(y)
+
+  override method get(Posn(x,y)):
+    if in_grid(x, y)
+    | lines[y][x]
+    | #false

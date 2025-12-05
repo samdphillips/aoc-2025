@@ -3,13 +3,27 @@
 import:
   rhombus/measure
   "util/advent_of_code.rhm" as aoc
+  "util/grid.rhm" open
   "util/misc.rhm" open
 
 @example_input(test_input1){
+..@@.@@@@.
+@@@.@.@.@@
+@@@@@.@.@@
+@.@@@@..@.
+@@.@@@@.@@
+.@@@@@@@.@
+.@.@.@.@@@
+@.@@@.@@@@
+.@@@@@@@@.
+@.@.@@@.@.
 }
 
 fun get_puzzle_input():
   aoc.fetch_input(aoc.find_session(), 2025, #false)
+
+fun parse_input(input :: String) :: List.of(String):
+  input.split("\n")
 
 fun run1(s): #void
 
