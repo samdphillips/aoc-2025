@@ -1,0 +1,84 @@
+#lang rhombus/static
+
+import:
+  rhombus/measure
+  rhombus/rx open
+  "util/advent_of_code.rhm" as aoc
+  "util/misc.rhm" open
+
+@example_input(test_input1){
+3-5
+10-14
+16-20
+12-18
+
+1
+5
+8
+11
+17
+32
+}
+
+fun get_puzzle_input():
+  aoc.fetch_input(aoc.find_session(), 2025, 5)
+
+fun parse_input(input :: String) :: values(List.of(Range), List.of(Nat)):
+  def lines = input.split("\n")
+  fun parse_ranges():
+    recur more(i :~ Nat = 0, rs :~ List = []):
+      match lines[i]
+      | "": parse_ids(i + 1, rs)
+      | rx'bol ($start: digit+) "-" ($end: digit+) eol':
+          let start = String.to_int(start)
+          let end = String.to_int(end)
+          let rs = rs.add(start ..= end)
+          more(i + 1, rs)
+  fun parse_ids(i :: Nat, rs :: List.of(Range)):
+    let ids :: List.of(Nat):
+      for List (j: i .. lines.length()):
+        lines[j].to_int()
+    values(rs, ids)
+  parse_ranges()
+
+fun merge_ranges(rs :: List.of(Range)) :: List.of(Range):
+  let rs = rs.sort(fun (a :: Range, b :: Range): a.start() < b.start())
+  let values(ms, last):
+    for values(ms :~ List = [], cur :~ Range = rs[0]) (i: 1 .. rs.length()):
+      if cur.is_connected(rs[i])
+      | values(ms, cur.span(rs[i]))
+      | values(ms.add(cur), rs[i])
+  ms.add(last)
+
+fun is_fresh(id :: Nat, rs :: List.of(Range)) :: Boolean:
+  for any (r: rs):
+    r.contains(id)
+
+fun run1(s):
+  let values(rs, ids) = parse_input(s)
+  let rs = merge_ranges(rs)
+  for math.sum (i: ids):
+    if is_fresh(i, rs) | 1 | 0
+
+module test:
+  check run1(test_input1) ~is 3
+
+module part1:
+  def input = get_puzzle_input()
+  measure.time:
+    run1(input)
+
+fun run2(s):
+  let values(rs, _) = parse_input(s)
+  let rs = merge_ranges(rs)
+  for math.sum (r: rs):
+    r.end() - r.start() + 1
+
+module test:
+  check run2(test_input1) ~is 14
+
+
+module part2:
+  def input = get_puzzle_input()
+  measure.time:
+    run2(input)
