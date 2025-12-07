@@ -1,0 +1,127 @@
+#lang rhombus/static/and_meta
+
+import:
+  rhombus/measure
+  "util/advent_of_code.rhm" as aoc
+  "util/grid.rhm":
+    as g
+    expose Posn
+  "util/misc.rhm" open
+
+@example_input(test_input1){
+123 328  51 64
+ 45 64  387 23
+  6 98  215 314
+*   +   *   +
+}
+
+fun get_puzzle_input():
+  aoc.fetch_input(aoc.find_session(), 2025, 6)
+
+annot.macro 'PuzzleInput': 'List.of(Pair.of(String, List.of(Nat)))'
+
+fun parse_input1(s :: String) :: PuzzleInput:
+  def lines:
+    s.split("\n").map((String.split(_)))
+  def rows = lines.length()
+  def cols = lines[0].length()
+  def vals:
+    for List (c: 0..cols):
+      for List (r: 0..rows - 1):
+        lines[r][c].to_int()
+  def ops = lines[rows - 1]
+  for List (c: 0..cols):
+    Pair(ops[c], vals[c])
+
+fun solve(s, parse):
+  def homework :~ PuzzleInput = parse(s)
+  for math.sum (p: homework):
+    def op: match p.first
+            | "+": math.sum
+            | "*": math.product
+    op(&p.rest)
+
+fun run1(s :: String):
+  solve(s, parse_input1)
+
+module test:
+  check run1(test_input1) ~is 4277556
+
+module part1:
+  def input = get_puzzle_input()
+  measure.time:
+    run1(input)
+
+class Grid():
+  extends g.Grid
+  constructor (s :: String):
+    let ls = s.split("\n")
+    let width:
+      // XXX: math.max, math.min reducer (math.best?)
+      for values(m = #false) (line: ls):
+        let len = line.length()
+        if m | math.max(len, m) | len
+    super(str.s(_, ~width: width).map(ls), width, ls.length())()
+
+fun digit_to_value(ch :: Char):
+  ch.to_int() - Char"0".to_int()
+
+fun column_number(g :: Grid, col :: Nat) :: maybe(Nat):
+  def end = g.height - 1
+  fun at(i :~ Nat): g[Posn(col, i)]
+  fun skip_space(i :~ Nat):
+    guard i < end | #false
+    match at(i)
+    | #false || Char" ": skip_space(i + 1)
+    | ~else: read_digits(i, 0)
+  fun read_digits(i :~ Nat, v :~ Nat):
+    guard i < end | v
+    match at(i)
+    | Char" ": v
+    | ch: let v = v * 10 + digit_to_value(ch)
+          read_digits(i + 1, v)
+  skip_space(0)
+
+module test:
+  block:
+    def g = Grid(test_input1)
+    check column_number(g, 0) ~is 1
+    check column_number(g, 1) ~is 24
+    check column_number(g, 2) ~is 356
+    check column_number(g, 3) ~is #false
+    check column_number(g, 7) ~is #false
+    check column_number(g, 11) ~is #false
+    check column_number(g, 8) ~is 32
+    check column_number(g, 14) ~is 4
+
+fun parse_input2(s :: String) :: PuzzleInput:
+  def g = Grid(s)
+  def vals :~ List.of(List.of(Nat)):
+    let end = g.width
+    recur more(col :~ Nat = 0,
+               cur :~ List.of(Nat) = [],
+               hw :~ List.of(List.of(Nat)) = []):
+      guard col < end
+      | hw.add(cur)
+
+      match column_number(g, col)
+      | #false:
+          more(col + 1, [], hw.add(cur))
+      | v:
+          more(col + 1, cur.add(v), hw)
+  def ops = g.lines[g.height - 1].split()
+  for List (op: ops, vs: vals):
+    Pair(op, vs)
+
+fun run2(s):
+  solve(s, parse_input2)
+
+
+module test:
+  check run2(test_input1) ~is 3263827
+
+
+module part2:
+  def input = get_puzzle_input()
+  measure.time:
+    run2(input)
