@@ -1,0 +1,120 @@
+#lang rhombus/static/and_meta
+
+import:
+  rhombus/measure
+  "util/advent_of_code.rhm" as aoc
+  "util/misc.rhm" open
+
+@example_input(test_input1){
+162,817,812
+57,618,57
+906,360,560
+592,479,940
+352,342,300
+466,668,158
+542,29,236
+431,825,988
+739,650,466
+52,470,668
+216,146,977
+819,987,18
+117,168,530
+805,96,715
+346,949,466
+970,615,88
+941,993,340
+862,61,35
+984,92,344
+425,690,689
+}
+
+fun get_puzzle_input():
+  aoc.fetch_input(aoc.find_session(), 2025, 8)
+
+class Posn3(x :: Real, y :: Real, z :: Real):
+  method fast_distance(Posn3(x1, y1, z1)) :~ Real:
+    expr.macro '$a % $b':
+      ~stronger_than: +
+      '($b - $a) ** 2'
+    x % x1 + y % y1 + z % z1
+
+  method distance(p) :~ Real:
+    math.sqrt(fast_distance(p))
+
+fun parse_input(s :: String) :~ List.of(Posn3):
+  for List (line: s.split("\n")):
+    def [x, y, z] = line.split(",").map(String.to_int)
+    Posn3(x, y, z)
+
+class Edge(distance :: Real, src :: Posn3, dst :: Posn3)
+
+fun measure_points(ps) :~ List.of(Edge):
+  recur do_measure(ps :~ List.of(Posn3) = ps,
+                   rs :~ List = []):
+    match ps
+    | [a]: rs.sort(fun(a :~ Edge, b :~ Edge): a.distance < b.distance)
+    | [a, &ps]:
+        def ds:
+          for List (b: ps):
+            Edge(a.distance(b), a, b)
+        do_measure(ps, rs ++ ds)
+
+fun connect_boxes(es :: List.of(Edge)) :~ List:
+  def values(nodes, components):
+    for values(ns :: Map.of(Posn3, Nat) = {}, cs :: List = []):
+      each Edge(_, src, dst): es
+      fun lookup(node):
+        match ns.get(node, #false)
+        | #false: #false
+        | i: recur chase(i = i):
+               match cs[i]
+               | _ :: Set: i
+               | j: chase(j)
+      match values(lookup(src), lookup(dst))
+      | values(#false, #false):
+          let i = cs.length()
+          values(ns ++ {src: i, dst: i},
+                 cs.add({src, dst}))
+      | values(#false, i):
+          values(ns.set(src, i),
+                 cs.set(i, (cs[i] :~ Set) ++ {src}))
+      | values(i, #false):
+          values(ns.set(dst, i),
+                 cs.set(i, (cs[i] :~ Set) ++ {dst}))
+      | values(i, j):
+          let k = cs.length()
+          values(ns ++ {src: k, dst: k},
+                 cs.set(i, k)
+                   .set(j, k)
+                   .add((cs[i] :~ Set) ++ (cs[j] :~ Set)))
+  components
+
+fun run1(s, n):
+  def ps :~ List.of(Posn3) = parse_input(s)
+  def es :~ List.of(Edge) = measure_points(ps).take(n)
+  def largest3:
+    connect_boxes(es).filter(~keep: (_ is_a Set))
+      .map(fun(v :~ Set): v.length())
+      .sort((_ :~ Real > _ :~ Real))
+      .take(3)
+  math.product(&largest3)
+
+module test:
+  check run1(test_input1, 10) ~is 40
+
+module part1:
+  def input = get_puzzle_input()
+  measure.time:
+    run1(input, 1000)
+
+fun run2(s): #void
+
+#//
+module test:
+  check run2(test_input1) ~is #false
+
+
+module part2:
+  def input = get_puzzle_input()
+  measure.time:
+    run2(input)
