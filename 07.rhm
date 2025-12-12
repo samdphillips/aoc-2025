@@ -57,11 +57,28 @@ module part1:
   measure.time:
     run1(input)
 
-fun run2(s): #void
+fun run2(s):
+  def g :~ Grid = Grid(s)
+  def init = g.find_char(Char"S")
+  recur do_splits(i :~ Nat = g.height + 1, ps :~ Map.of(Posn, Nat) = {init: 1}):
+    cond
+    | i == 0: math.sum(&ps.values())
+    | ~else:
+        def nps:
+          for values(nps :~ Map.of(Posn, Nat) = {}) (values(p, n): ps):
+            fun get_count(p :~ Posn): nps.get(p, 0) + n
+            let p = p <+> Posn.S
+            let ps:
+              match g[p]
+              | Char"^": let l = p <+> Posn.W
+                         let r = p <+> Posn.E
+                         {l: get_count(l), r: get_count(r)}
+              | ~else: {p: get_count(p)}
+            nps ++ ps
+        do_splits(i - 1, nps)
 
-#//
 module test:
-  check run2(test_input1) ~is #false
+  check run2(test_input1) ~is 40
 
 
 module part2:
