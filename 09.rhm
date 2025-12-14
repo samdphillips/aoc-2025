@@ -1,0 +1,59 @@
+#lang rhombus/static
+
+import:
+  rhombus/measure
+  "util/advent_of_code.rhm" as aoc
+  "util/grid.rhm" open
+  "util/misc.rhm" open
+
+@example_input(test_input1){
+7,1
+11,1
+11,7
+9,7
+9,5
+2,5
+2,3
+7,3
+}
+
+fun get_puzzle_input():
+  aoc.fetch_input(aoc.find_session(), 2025, 9)
+
+fun parse_input(s :: String):
+  for List (line: s.split("\n")):
+    Posn(&line.split(",").map(String.to_int))
+
+fun run1(s):
+  def ps = parse_input(s)
+  recur do_areas(ps :: List.of(Posn) = ps,
+                 best :: Nat = 0):
+    import .math: expose: abs; max
+    match ps
+    | [p]: best
+    | [p, &ps]:
+        let best:
+          for values(best = best) (q: ps):
+            def d = (p <-> q) <+> (1 <.> 1)
+            max(best, abs(d.x) * abs(d.y))
+        do_areas(ps, best)
+
+module test:
+  check run1(test_input1) ~is 50
+
+module part1:
+  def input = get_puzzle_input()
+  measure.time:
+    run1(input)
+
+fun run2(s): #void
+
+#//
+module test:
+  check run2(test_input1) ~is #false
+
+
+module part2:
+  def input = get_puzzle_input()
+  measure.time:
+    run2(input)
