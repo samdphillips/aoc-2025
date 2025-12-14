@@ -33,6 +33,7 @@ fun get_puzzle_input():
 
 class Posn3(x :: Real, y :: Real, z :: Real):
   method fast_distance(Posn3(x1, y1, z1)) :~ Real:
+    // I am very lazy
     expr.macro '$a % $b':
       ~stronger_than: +
       '($b - $a) ** 2'
@@ -48,7 +49,7 @@ fun parse_input(s :: String) :~ List.of(Posn3):
 
 class Edge(distance :: Real, src :: Posn3, dst :: Posn3)
 
-fun measure_points(ps) :~ List.of(Edge):
+fun measure_boxes(ps) :~ List.of(Edge):
   recur do_measure(ps :~ List.of(Posn3) = ps,
                    rs :~ List = []):
     match ps
@@ -59,41 +60,80 @@ fun measure_points(ps) :~ List.of(Edge):
             Edge(a.distance(b), a, b)
         do_measure(ps, rs ++ ds)
 
-fun connect_boxes(es :: List.of(Edge)) :~ List:
-  def values(nodes, components):
-    for values(ns :: Map.of(Posn3, Nat) = {}, cs :: List = []):
-      each Edge(_, src, dst): es
-      fun lookup(node):
-        match ns.get(node, #false)
-        | #false: #false
-        | i: recur chase(i = i):
-               match cs[i]
-               | _ :: Set: i
-               | j: chase(j)
-      match values(lookup(src), lookup(dst))
-      | values(#false, #false):
-          let i = cs.length()
-          values(ns ++ {src: i, dst: i},
-                 cs.add({src, dst}))
-      | values(#false, i):
-          values(ns.set(src, i),
-                 cs.set(i, (cs[i] :~ Set) ++ {src}))
-      | values(i, #false):
-          values(ns.set(dst, i),
-                 cs.set(i, (cs[i] :~ Set) ++ {dst}))
-      | values(i, j):
-          let k = cs.length()
-          values(ns ++ {src: k, dst: k},
-                 cs.set(i, k)
-                   .set(j, k)
-                   .add((cs[i] :~ Set) ++ (cs[j] :~ Set)))
-  components
+fun connect_boxes(es :: List.of(Edge)) :~ values(Edge, List):
+  def node_count :~ Nat:
+    let nodes:
+      for values(n :~ Set = Set{}) (e: es):
+        n ++ {e.src, e.dst}
+    nodes.length()
+  recur do_connect(es :~ List.of(Edge) = es,
+                   seen_all = #false,
+                   joined :: maybe(Edge) = #false,
+                   ns :: Map.of(Posn3, Nat) = {},
+                   cs :: List = [],
+                   count_cs :: Nat = 0):
+    fun lookup(node):
+      match ns.get(node, #false)
+      | #false: #false
+      | i: recur chase(i = i):
+             match cs[i]
+             | _ :: Set: i
+             | j: chase(j)
+    match es
+    | []: values(joined, cs)
+    | [cur_edge && Edge(_, src, dst), &es]:
+        let seen_all:
+          if seen_all
+          | #true
+          | let ks = Set(src, dst, &ns.keys())
+            node_count == ks.length()
+        fun check_join(count_cs):
+          joined || (seen_all && count_cs == 1 && cur_edge)
+
+        match values(lookup(src), lookup(dst))
+        | values(#false, #false):
+            let i = cs.length()
+            let count_cs = count_cs + 1
+            do_connect(es,
+                       seen_all,
+                       check_join(count_cs),
+                       ns ++ {src: i, dst: i},
+                       cs.add({src, dst}),
+                       count_cs)
+        | values(#false, i):
+            do_connect(es,
+                       seen_all,
+                       check_join(count_cs),
+                       ns.set(src, i),
+                       cs.set(i, (cs[i] :~ Set) ++ {src}),
+                       count_cs)
+        | values(i, #false):
+            do_connect(es,
+                       seen_all,
+                       check_join(count_cs),
+                       ns.set(dst, i),
+                       cs.set(i, (cs[i] :~ Set) ++ {dst}),
+                       count_cs)
+        | values(i, j):
+            if i == j
+            | do_connect(es, seen_all, check_join(count_cs), ns, cs, count_cs)
+            | let k = cs.length()
+              let count_cs = count_cs - 1
+              do_connect(es,
+                         seen_all,
+                         check_join(count_cs),
+                         ns ++ {src: k, dst: k},
+                         cs.set(i, k)
+                           .set(j, k)
+                           .add((cs[i] :~ Set) ++ (cs[j] :~ Set)),
+                         count_cs)
 
 fun run1(s, n):
   def ps :~ List.of(Posn3) = parse_input(s)
-  def es :~ List.of(Edge) = measure_points(ps).take(n)
+  def es :~ List.of(Edge) = measure_boxes(ps).take(n)
+  def values(_, cs) = connect_boxes(es)
   def largest3:
-    connect_boxes(es).filter(~keep: (_ is_a Set))
+    cs.filter(~keep: (_ is_a Set))
       .map(fun(v :~ Set): v.length())
       .sort((_ :~ Real > _ :~ Real))
       .take(3)
@@ -107,11 +147,14 @@ module part1:
   measure.time:
     run1(input, 1000)
 
-fun run2(s): #void
+fun run2(s):
+  def ps :~ List.of(Posn3) = parse_input(s)
+  def es :~ List.of(Edge) = measure_boxes(ps)
+  def values(e, _) = connect_boxes(es)
+  e.src.x * e.dst.x
 
-#//
 module test:
-  check run2(test_input1) ~is #false
+  check run2(test_input1) ~is 25272
 
 
 module part2:
